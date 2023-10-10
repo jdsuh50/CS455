@@ -37,37 +37,66 @@ public class MeasurementClient {
         ) {
             
             String userInput;
-            while ((userInput = stdIn.readLine()) != null) {
-                String[] usermsg = userInput.split(" ");
-                String measurementType = usermsg[1];
-                int numProbes = Integer.parseInt(usermsg[2]);
-                int messageSize = Integer.parseInt(usermsg[3]);
-                int serverDelay = Integer.parseInt(usermsg[4]);
-                String servermsg;
+            userInput = stdIn.readLine();
+            String[] usermsg = userInput.split(" ");
+            String measurementType = usermsg[1];
+            int numProbes = Integer.parseInt(usermsg[2]);
+            int messageSize = Integer.parseInt(usermsg[3]);
+            int serverDelay = Integer.parseInt(usermsg[4]);
+            String servermsg;
 
-                out.println(userInput);
-                System.out.println(userInput);
+            out.println(userInput);
+            System.out.println(userInput);
 
             // if message is received, start measurement phase
-                long totalTime = 0;
+            if (measurementType.equals("rtt")) {
+
+                double totalTime = 0;
                 servermsg = in.readLine();
                 System.out.println(servermsg);
                 if (servermsg.equals("200 OK:Ready")) {
                     for (int i = 1; i < numProbes + 1; i++) {
                         String payload = payloader(messageSize);
-                        long sent = System.currentTimeMillis();
+                        double sent = System.currentTimeMillis();
                         out.println("m " + i + " " + payload + "\n");
-                        System.out.println("echo: " + in.readLine());
-                        long received = System.currentTimeMillis();
+                        servermsg = in.readLine();
+                        System.out.println("echo: " + servermsg);
+                        double received = System.currentTimeMillis();
                         totalTime += (received - sent);
                     }
-                    long rtt = totalTime / numProbes;
-                    System.out.println(rtt);
+                }
+                double rtt = (totalTime / numProbes);
+                System.out.println(rtt);
+
+            } else if (measurementType.equals("tput")) {
+                double tx = 0;
+                servermsg = in.readLine();
+                System.out.println(servermsg);
+                if (servermsg.equals("200 OK:Ready")) {
+                    for (int i = 1; i < numProbes + 1; i++) {
+                        String payload = payloader(messageSize);
+                        double sent = System.currentTimeMillis();
+                        out.println("m " + i + " " + payload + "\n");
+                        System.out.println("echo: " + in.readLine());
+                        double received = System.currentTimeMillis();
+                        double timer = (received - sent);
+                        tx += (messageSize/timer);
+                        System.out.println(tx);
+                    }
+                    double throughput = (tx / numProbes);
+                    System.out.println(throughput);
                 }
 
-                if (servermsg.equals("200 OK: Closing Connection")) {
-                    System.exit(0);
-                }
+            }
+
+
+            out.println("t");
+            servermsg = in.readLine();
+
+            if (servermsg.equals("200 OK: Closing Connection")) {
+                socket.close();
+            } else {
+                System.exit(1);
             }
 
         } catch (UnknownHostException e) {

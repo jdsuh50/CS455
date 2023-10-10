@@ -57,7 +57,7 @@ public class MeasurementServer {
                 } else if (protocolPhase.equals("t")) {
                     if (msg.equals("t")) {
                         out.println("200 OK: Closing Connection");
-                        System.exit(0);
+                        clientSocket.close();
                     } else {
                         System.err.println("404 ERROR: Invalid Connection Termination Message");
                         System.exit(1);
