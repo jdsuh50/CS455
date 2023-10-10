@@ -1,6 +1,5 @@
 import java.net.*;
 import java.io.*;
-import java.time.*;
 
 public class MeasurementServer {
     public static void main(String[] args) {
@@ -57,7 +56,7 @@ public class MeasurementServer {
                 } else if (protocolPhase.equals("t")) {
                     if (msg.equals("t")) {
                         out.println("200 OK: Closing Connection");
-                        clientSocket.close();
+                        System.exit(0);
                     } else {
                         System.err.println("404 ERROR: Invalid Connection Termination Message");
                         System.exit(1);

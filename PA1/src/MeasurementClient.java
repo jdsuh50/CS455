@@ -1,6 +1,5 @@
 import java.net.*;
 import java.io.*;
-import java.time.*;
 
 public class MeasurementClient {
 
@@ -42,7 +41,6 @@ public class MeasurementClient {
             String measurementType = usermsg[1];
             int numProbes = Integer.parseInt(usermsg[2]);
             int messageSize = Integer.parseInt(usermsg[3]);
-            int serverDelay = Integer.parseInt(usermsg[4]);
             String servermsg;
 
             out.println(userInput);
@@ -69,7 +67,7 @@ public class MeasurementClient {
                 System.out.println(rtt);
 
             } else if (measurementType.equals("tput")) {
-                double tx = 0;
+                double total = 0;
                 servermsg = in.readLine();
                 System.out.println(servermsg);
                 if (servermsg.equals("200 OK:Ready")) {
@@ -80,11 +78,13 @@ public class MeasurementClient {
                         System.out.println("echo: " + in.readLine());
                         double received = System.currentTimeMillis();
                         double timer = (received - sent);
-                        tx += (messageSize/timer);
+                        double tx = (messageSize/timer);
                         System.out.println(tx);
+                        total += tx;
+                        
                     }
-                    double throughput = (tx / numProbes);
-                    System.out.println(throughput);
+                    double throughput = (total / numProbes);
+                    System.out.println(throughput + "kbps");
                 }
 
             }
