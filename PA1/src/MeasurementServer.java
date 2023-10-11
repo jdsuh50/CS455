@@ -29,7 +29,7 @@ public class MeasurementServer {
 
                 if (protocolPhase.equals("s")) {
                     if (msgarr.length == 5) {
-                        out.println("200 OK:Ready");
+                        out.println("200 OK: Ready");
                         numProbes = Integer.parseInt(msgarr[2]);
                         serverDelay = Integer.parseInt(msgarr[4]);
                         counter = 0;

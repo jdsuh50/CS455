@@ -52,39 +52,39 @@ public class MeasurementClient {
                 double totalTime = 0;
                 servermsg = in.readLine();
                 System.out.println(servermsg);
-                if (servermsg.equals("200 OK:Ready")) {
+                if (servermsg.equals("200 OK: Ready")) {
                     for (int i = 1; i < numProbes + 1; i++) {
                         String payload = payloader(messageSize);
                         double sent = System.currentTimeMillis();
-                        out.println("m " + i + " " + payload + "\n");
-                        servermsg = in.readLine();
-                        System.out.println("echo: " + servermsg);
+                        out.println("m " + i + " " + payload);
+                        System.out.println("echo: " + in.readLine());
                         double received = System.currentTimeMillis();
-                        totalTime += (received - sent);
+                        double timer = (received - sent);
+                        System.out.println(timer);
+                        totalTime += timer;
                     }
                 }
                 double rtt = (totalTime / numProbes);
-                System.out.println(rtt);
+                System.out.println("Avg rtt: " + rtt);
 
             } else if (measurementType.equals("tput")) {
                 double total = 0;
                 servermsg = in.readLine();
                 System.out.println(servermsg);
-                if (servermsg.equals("200 OK:Ready")) {
+                if (servermsg.equals("200 OK: Ready")) {
                     for (int i = 1; i < numProbes + 1; i++) {
                         String payload = payloader(messageSize);
                         double sent = System.currentTimeMillis();
-                        out.println("m " + i + " " + payload + "\n");
+                        out.println("m " + i + " " + payload);
                         System.out.println("echo: " + in.readLine());
                         double received = System.currentTimeMillis();
                         double timer = (received - sent);
                         double tx = (messageSize/timer);
                         System.out.println(tx);
                         total += tx;
-                        
                     }
                     double throughput = (total / numProbes);
-                    System.out.println(throughput + "kbps");
+                    System.out.println(throughput + " kbps");
                 }
 
             }
