@@ -114,22 +114,20 @@ public class StudentNetworkSimulator extends NetworkSimulator {
   }
 
   private int seqNo;
+  private int lastAck;
   private Packet[] sendBuffer;
   private Packet[] recBuffer;
   private int smin;
   private int smax;
 
-  private int lastAck = -1;
-  private int expected;
   private int rmin;
   private int rmax;
 
-
-  private int numSent;
-  private int retransmits;
-  private int numCorrupted;
-  private int numACK;
-  private int numtoL5;
+  private double numSent = 0;
+  private double retransmits = 0;
+  private double numCorrupted = 0;
+  private double numACK = 0;
+  private double numtoL5 = 0;
   // This routine will be called whenever the upper layer at the sender [A]
   // has a message to send. It is the job of your protocol to insure that
   // the data in such a message is delivered in-order, and correctly, to
@@ -164,23 +162,27 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
   protected void aOutput(Message message) {
     String payload = message.getData();
-    Packet packet = new Packet(seqNo, 0, -1, payload);
+    Packet packet = new Packet(seqNo, lastAck, -1, payload);
     int checksum = checkSum(packet);
     packet.setChecksum(checksum);
     seqNo = next(seqNo);
 
     if (sendBuffer[packet.getSeqnum()] != null) {
-      System.out.println("Buffer is already full");
+      Simulation_done();
+      System.out.println("Buffer is already full: " + sendBuffer[packet.getSeqnum()]);
       System.exit(1);
     }
 
     sendBuffer[packet.getSeqnum()] = packet;
-    System.out.println("Sending packet to B:" + packet.toString());
-    toLayer3(A, packet);
-    numSent++;
+    if ((smin <= packet.getSeqnum() && packet.getSeqnum() <= smax)
+        || (smin <= packet.getSeqnum() ^ packet.getSeqnum() <= smax)) {
+      System.out.println("Sending packet to B:" + packet.toString());
+      toLayer3(A, packet);
+      numSent++;
 
-    if (smin == packet.getSeqnum()) {
-      startTimer(A, RxmtInterval);
+      if (smin == packet.getSeqnum()) {
+        startTimer(A, RxmtInterval);
+      }
     }
   }
 
@@ -196,17 +198,26 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     }
 
     System.out.println("A received ACK for packet #" + packet.getSeqnum());
-    if (packet.getAcknum() <= packet.getSeqnum()) {
-      toLayer3(A, sendBuffer[packet.getAcknum()]);
-      startTimer(A, RxmtInterval);
-    }
+
     if (packet.getSeqnum() == smin) {
       stopTimer(A);
+    }
+    while (smin != packet.getAcknum()) {
+      sendBuffer[smin] = null;
       smin = next(smin);
       smax = next(smax);
     }
+    if (lastAck == packet.getAcknum()) {
+      if (sendBuffer[lastAck] != null) {
+        System.out.println("Dupe - Retransmitting Packet #" + sendBuffer[lastAck].getSeqnum());
+        toLayer3(A, sendBuffer[lastAck]);
+        startTimer(A, RxmtInterval);
+        retransmits++;
+      }
+    }
+
+    lastAck = packet.getAcknum();
     sendBuffer[packet.getSeqnum()] = null;
-    
   }
 
   // This routine will be called when A's timer expires (thus generating a
@@ -215,11 +226,10 @@ public class StudentNetworkSimulator extends NetworkSimulator {
   // for how the timer is started and stopped.
   protected void aTimerInterrupt() {
     if (sendBuffer[smin] != null) {
-      System.out.println("Retransmitting Packet" + sendBuffer[smin].getSeqnum());
+      System.out.println("RTO - Retransmitting Packet #" + sendBuffer[smin].getSeqnum());
       toLayer3(A, sendBuffer[smin]);
-    } else {
-      smin = next(smin);
-      smax = next(smax);
+      startTimer(A, RxmtInterval);
+      retransmits++;
     }
   }
 
@@ -229,6 +239,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
   // of entity A).
   protected void aInit() {
     seqNo = FirstSeqNo;
+    lastAck = 0;
     sendBuffer = new Packet[LimitSeqNo + 1];
     smin = FirstSeqNo;
     smax = smin + WindowSize - 1;
@@ -244,22 +255,21 @@ public class StudentNetworkSimulator extends NetworkSimulator {
       numCorrupted++;
       return;
     }
-    recBuffer[packet.getSeqnum()] = packet;
-    if (packet.getSeqnum() == expected) {
-      expected = next(expected);
-      
-      while (recBuffer[rmin] != null) {
-        toLayer5(packet.getPayload());
-        numtoL5++;
-        recBuffer[rmin] = null;
-        rmin = next(rmin);
-        rmax = next(rmax);
-      }
-    } else {
-      System.out.println("B received a packet out of order - ignoring data. Expecting #" + expected + " received #"
-          + packet.getSeqnum());
+
+    if (packet.getSeqnum() >= rmin) {
+      recBuffer[packet.getSeqnum()] = packet;
     }
-    Packet ack = new Packet(packet.getSeqnum(), expected, -1, "");
+
+    while (recBuffer[rmin] != null) {
+      toLayer5(recBuffer[rmin].getPayload());
+      numtoL5++;
+      recBuffer[rmin] = null;
+      rmin = next(rmin);
+      rmax = next(rmax);
+      System.out.println(rmin);
+    }
+
+    Packet ack = new Packet(packet.getSeqnum(), rmin, -1, "");
     int check = checkSum(ack);
     ack.setChecksum(check);
 
@@ -273,11 +283,10 @@ public class StudentNetworkSimulator extends NetworkSimulator {
   // initialization (e.g. of member variables you add to control the state
   // of entity B).
   protected void bInit() {
-    expected = FirstSeqNo;
     recBuffer = new Packet[LimitSeqNo + 1];
     rmin = FirstSeqNo;
     rmax = rmin + WindowSize - 1;
-    
+
   }
 
   // Use to print final statistics
@@ -290,8 +299,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     System.out.println("Number of data packets delivered to layer 5 at B:" + numtoL5);
     System.out.println("Number of ACK packets sent by B:" + numACK);
     System.out.println("Number of corrupted packets:" + numCorrupted);
-    System.out.println("Ratio of lost packets:" + "<YourVariableHere>");
-    System.out.println("Ratio of corrupted packets:" + numCorrupted / numSent);
+    System.out.println("Ratio of lost packets:" + ((retransmits - numCorrupted) / numSent));
+    System.out.println("Ratio of corrupted packets:" + (numCorrupted / numSent));
     System.out.println("Average RTT:");
     System.out.println("Average communication time:");
     System.out.println("==================================================");
