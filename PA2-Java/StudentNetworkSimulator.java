@@ -255,10 +255,15 @@ public class StudentNetworkSimulator extends NetworkSimulator {
       numCorrupted++;
       return;
     }
-
-    if (packet.getSeqnum() >= rmin) {
-      recBuffer[packet.getSeqnum()] = packet;
+    if (rmax > rmin) {
+      if (packet.getSeqnum() >= rmin && packet.getSeqnum() <= rmax) {
+        recBuffer[packet.getSeqnum()] = packet;
+      }
+    } else {
+      if (packet.getSeqnum() >= rmin || packet.getSeqnum() <= rmax) {
+        recBuffer[packet.getSeqnum()] = packet;
     }
+    
 
     while (recBuffer[rmin] != null) {
       toLayer5(recBuffer[rmin].getPayload());
@@ -277,7 +282,7 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     toLayer3(B, ack);
     numACK++;
   }
-
+  }
   // This routine will be called once, before any of your other B-side
   // routines are called. It can be used to do any required
   // initialization (e.g. of member variables you add to control the state
