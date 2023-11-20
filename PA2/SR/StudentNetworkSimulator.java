@@ -130,8 +130,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
   private double numCorrupted = 0;
   private double numACK = 0;
   private double numtoL5 = 0;
-  private double RTT = 0;
-  private double communicationTime = 0;
   // This routine will be called whenever the upper layer at the sender [A]
   // has a message to send. It is the job of your protocol to insure that
   // the data in such a message is delivered in-order, and correctly, to
@@ -170,9 +168,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     int checksum = checkSum(packet);
     packet.setChecksum(checksum);
     seqNo = next(seqNo);
-    packet.setTimeSent(getTime());
-    packet.setTotalTime(getTime());
-
 
     if (sendBuffer[packet.getSeqnum()] != null) {
       Simulation_done();
@@ -208,9 +203,6 @@ public class StudentNetworkSimulator extends NetworkSimulator {
 
     if (packet.getSeqnum() == smin) {
       stopTimer(A);
-      RTT += getTime() - packet.getTimeSent() ;
-      communicationTime += getTime() - packet.getTotalTime();
-
     }
     while (smin != packet.getAcknum()) {
       sendBuffer[smin] = null;
@@ -265,29 +257,34 @@ public class StudentNetworkSimulator extends NetworkSimulator {
       numCorrupted++;
       return;
     }
-    
-      if (packet.getSeqnum() >= rmin ){
+    if (rmax > rmin) {
+      if (packet.getSeqnum() >= rmin && packet.getSeqnum() <= rmax) {
         recBuffer[packet.getSeqnum()] = packet;
       }
+    } else {
+      if (packet.getSeqnum() >= rmin || packet.getSeqnum() <= rmax) {
+        recBuffer[packet.getSeqnum()] = packet;
+    }
+    
 
-      while (recBuffer[rmin] != null) {
-        toLayer5(recBuffer[rmin].getPayload());
-        numtoL5++;
-        recBuffer[rmin] = null;
-        rmin = next(rmin);
-        rmax = next(rmax);
-        System.out.println(rmin);
-      }
-
-      Packet ack = new Packet(packet.getSeqnum(), rmin, -1, "");
-      int check = checkSum(ack);
-      ack.setChecksum(check);
-
-      System.out.println("Sending ACK: " + ack.toString());
-      toLayer3(B, ack);
-      numACK++;
+    while (recBuffer[rmin] != null) {
+      toLayer5(recBuffer[rmin].getPayload());
+      numtoL5++;
+      recBuffer[rmin] = null;
+      rmin = next(rmin);
+      rmax = next(rmax);
+      System.out.println(rmin);
     }
 
+    Packet ack = new Packet(packet.getSeqnum(), rmin, -1, "");
+    int check = checkSum(ack);
+    ack.setChecksum(check);
+
+    System.out.println("Sending ACK: " + ack.toString());
+    toLayer3(B, ack);
+    numACK++;
+  }
+  }
   // This routine will be called once, before any of your other B-side
   // routines are called. It can be used to do any required
   // initialization (e.g. of member variables you add to control the state
@@ -311,8 +308,8 @@ public class StudentNetworkSimulator extends NetworkSimulator {
     System.out.println("Number of corrupted packets:" + numCorrupted);
     System.out.println("Ratio of lost packets:" + ((retransmits - numCorrupted) / numSent));
     System.out.println("Ratio of corrupted packets:" + (numCorrupted / numSent));
-    System.out.println("Average RTT:" + (RTT / numSent));
-    System.out.println("Average communication time:" + (communicationTime/(numACK)));
+    System.out.println("Average RTT:");
+    System.out.println("Average communication time:");
     System.out.println("==================================================");
 
     // PRINT YOUR OWN STATISTIC HERE TO CHECK THE CORRECTNESS OF YOUR PROGRAM
